@@ -1,3 +1,4 @@
-.idea
+.idea/
 env/
 config.ini
+parser/__pycache__
