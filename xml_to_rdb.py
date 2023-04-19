@@ -1,10 +1,5 @@
 import configparser
-import sys
-import os
-import re
-import uuid
-import pandas as pd
-from sqlalchemy import create_engine, inspect, exc
+from sqlalchemy import create_engine
 from parser.xml import *
 from parser.functions import create_url
 from parser.server import FFIDatabase
@@ -12,8 +7,9 @@ from parser.server import FFIDatabase
 
 def main():
     # Fill this in before running!!!!
-    path = 'C:/Users/Corey/OneDrive/OneDrive - New Mexico Highlands University/2023_Admin_Exports_For_Conversion/1.05.13.00/'
-    # path = 'C:/Users/Corey/OneDrive/OneDrive - New Mexico Highlands University/Data/FFI Data/test'
+    path = 'YourDataPathHere'
+
+    # DEBUGGING
     debug = False
     # debug = True
 
@@ -21,7 +17,7 @@ def main():
     config = configparser.ConfigParser()
     config.read('config.ini')
 
-    sql_config = config['SQLServer2']
+    sql_config = config['NameOfYourServer']
     sql_url = create_url(**sql_config)
     sql_engine = create_engine(sql_url)
     server = FFIDatabase(sql_engine)
@@ -38,7 +34,7 @@ def main():
         ffi_data = FFIFile(export)
 
         if debug:
-            new_map = {'MethodAttributeCode': ffi_data['MethodAttributeCode']}
+            new_map = {'TableYouWantToTest': ffi_data['TableYouWantToTest']}
             ffi_data._data_map = new_map
             ffi_data.version = '1'
 
@@ -47,6 +43,7 @@ def main():
             ffi_data.to_many_tables()
 
         ffi_data.tables_to_db(server)
+        ffi_data.remove_mm_method_problems(server)
 
         os.rename(file, os.path.join(processed, export))
 

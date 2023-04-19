@@ -1,12 +1,11 @@
 import os
-import logging
 from uuid import uuid4
 
 import pandas as pd
-from pandas import DataFrame, concat, isna, read_sql, options, to_datetime
-from re import sub, findall, match
+from pandas import DataFrame, concat, options
+from re import findall
 from dateutil import parser
-from sqlalchemy import exc, MetaData, Table, text, sql, select, and_, or_
+from sqlalchemy import exc, text, sql, select, and_, or_
 from sqlalchemy.dialects.mysql import insert
 from sqlalchemy.orm import Session
 from parser.server import FFIDatabase
@@ -479,6 +478,32 @@ class FFIFile:
                     sesh.execute(text(f'SET IDENTITY_INSERT {table} OFF'))
         else:
             print(f'\nNo new data to add for {table}.')
+
+    @staticmethod
+    def remove_mm_method_problems(ffi_db):
+        protocol_method_q = """
+        DELETE FROM MM_Protocol_Method
+        WHERE MM_Method_ID IN (SELECT protocol.MM_Method_ID
+        FROM MM_Protocol_Method protocol
+        INNER JOIN Method ON protocol.MM_Method_GUID = Method.Method_GUID
+        WHERE protocol.MM_Method_GUID <> Method.Method_GUID
+        OR MM_Method_ID <> Method_ID)
+        """
+
+        org_method_q = """
+        DELETE FROM MM_Organization_Method
+        WHERE MM_Method_ID IN (SELECT org.MM_Method_ID
+        FROM MM_Organization_Method org
+        INNER JOIN Method ON org.MM_Method_ID = Method.Method_ID
+        WHERE org.MM_Method_GUID != Method.Method_GUID
+        OR MM_Method_ID <> Method_ID)
+        """
+
+        with ffi_db.start_session() as sick_sesh_bruh:
+            print('Dropping Method mismatches.')
+            sick_sesh_bruh.execute(text(protocol_method_q))
+            sick_sesh_bruh.execute(org_method_q)
+            sick_sesh_bruh.commit()
 
     def tables_to_db(self, ffi_db):
         """
